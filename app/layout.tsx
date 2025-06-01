@@ -17,14 +17,14 @@ export const metadata: Metadata = {
     address: false,
     telephone: false,
   },
-  metadataBase: new URL('https://nala-personal-journaling-apps.vercel.app/'), // Update with your actual domain
+  metadataBase: new URL('https://nala-personal-journaling-apps-bagasgmlngrs-projects.vercel.app/'), // Update with your actual domain
   alternates: {
     canonical: '/',
   },
   openGraph: {
     title: 'NALA - Personal Journal',
     description: 'Your personal journaling companion',
-    url: 'https://nala-personal-journaling-apps.vercel.app/',
+    url: 'https://nala-personal-journaling-apps-bagasgmlngrs-projects.vercel.app/',
     siteName: 'NALA',
     locale: 'en_US',
     type: 'website',
