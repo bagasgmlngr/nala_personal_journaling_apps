@@ -1,8 +1,11 @@
-// components/TimelinePage.tsx
-import { BookOpen, Plus } from 'lucide-react';
+// components/TimelinePage.tsx - Enhanced with Edit/Delete
+import React, { useState } from 'react';
+import { BookOpen, Plus, Trash2 } from 'lucide-react';
 import type { User, Story } from '@/lib/supabaseClient';
+import { supabase } from '@/lib/supabaseClient';
 import Navbar from './Navbar';
 import StoryCard from './StoryCard';
+import EditStoryModal from './EditStoryModal';
 
 interface TimelinePageProps {
   user: User;
@@ -10,6 +13,7 @@ interface TimelinePageProps {
   currentPage: string;
   setCurrentPage: (page: string) => void;
   handleSignOut: () => void;
+  fetchStories: () => void;
 }
 
 export default function TimelinePage({ 
@@ -17,8 +21,49 @@ export default function TimelinePage({
   stories, 
   currentPage, 
   setCurrentPage, 
-  handleSignOut 
+  handleSignOut,
+  fetchStories 
 }: TimelinePageProps) {
+  const [editingStory, setEditingStory] = useState<Story | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState<number | null>(null);
+
+  const handleEditStory = (story: Story) => {
+    setEditingStory(story);
+  };
+
+  const handleUpdateStory = (updatedStory: Story) => {
+    // Refresh stories to get latest data
+    fetchStories();
+    setEditingStory(null);
+  };
+
+  const handleDeleteStory = async (storyId: number) => {
+    if (!confirm('Are you sure you want to delete this story? This action cannot be undone.')) {
+      return;
+    }
+
+    setDeleteLoading(storyId);
+
+    try {
+      const { error } = await supabase
+        .from('stories')
+        .delete()
+        .eq('id', storyId);
+
+      if (error) {
+        throw new Error(error.message || 'Failed to delete story');
+      }
+
+      // Refresh stories after successful deletion
+      fetchStories();
+      
+    } catch (error: any) {
+      alert('Error deleting story: ' + error.message);
+    } finally {
+      setDeleteLoading(null);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar 
@@ -32,7 +77,14 @@ export default function TimelinePage({
         {/* Header Section - Mobile Optimized */}
         <div className="mb-6 sm:mb-8">
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Your Journal Timeline</h1>
-          <p className="mt-2 text-sm sm:text-base text-gray-600">Reflect on your journey through your stories</p>
+          <p className="mt-2 text-sm sm:text-base text-gray-600">
+            Reflect on your journey through your stories
+          </p>
+          {stories.length > 0 && (
+            <p className="mt-1 text-xs sm:text-sm text-gray-500">
+              {stories.length} {stories.length === 1 ? 'story' : 'stories'} in your journal
+            </p>
+          )}
         </div>
 
         {stories.length === 0 ? (
@@ -40,7 +92,9 @@ export default function TimelinePage({
           <div className="text-center py-8 sm:py-12 px-4">
             <BookOpen className="mx-auto h-10 w-10 sm:h-12 sm:w-12 text-gray-400" />
             <h3 className="mt-2 text-sm font-medium text-gray-900">No stories yet</h3>
-            <p className="mt-1 text-sm text-gray-500 max-w-sm mx-auto">Get started by writing your first story and begin your journaling journey.</p>
+            <p className="mt-1 text-sm text-gray-500 max-w-sm mx-auto">
+              Get started by writing your first story and begin your journaling journey.
+            </p>
             <div className="mt-6">
               <button
                 onClick={() => setCurrentPage('write')}
@@ -52,10 +106,27 @@ export default function TimelinePage({
             </div>
           </div>
         ) : (
-          /* Stories List - Mobile Optimized */
+          /* Stories List - Enhanced with Edit/Delete */
           <div className="space-y-4 sm:space-y-6">
             {stories.map((story) => (
-              <StoryCard key={story.id} story={story} />
+              <div key={story.id} className="relative">
+                {/* Delete Loading Overlay */}
+                {deleteLoading === story.id && (
+                  <div className="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center rounded-lg z-10">
+                    <div className="flex items-center space-x-2 text-red-600">
+                      <Trash2 className="h-5 w-5 animate-pulse" />
+                      <span className="text-sm">Deleting...</span>
+                    </div>
+                  </div>
+                )}
+                
+                <StoryCard 
+                  story={story}
+                  currentUserId={user.id}
+                  onEdit={handleEditStory}
+                  onDelete={handleDeleteStory}
+                />
+              </div>
             ))}
           </div>
         )}
@@ -71,6 +142,14 @@ export default function TimelinePage({
           </button>
         </div>
       </div>
+
+      {/* Edit Story Modal */}
+      <EditStoryModal
+        story={editingStory}
+        isOpen={!!editingStory}
+        onClose={() => setEditingStory(null)}
+        onUpdate={handleUpdateStory}
+      />
     </div>
   );
 }
